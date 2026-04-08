@@ -1,9 +1,9 @@
 package user
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/jadersonmarc/ecommerce-api/internal/auth"
 )
@@ -16,50 +16,60 @@ func NewHandler(s *Service) *Handler {
 	return &Handler{service: s}
 }
 
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Register(c *gin.Context) {
 	var input struct {
 		Name     string
 		Email    string
 		Password string
 	}
 
-	json.NewDecoder(r.Body).Decode(&input)
+	c.ShouldBindJSON(&input)
 
 	user, err := h.service.Register(input.Name, input.Email, input.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	json.NewEncoder(w).Encode(user)
+	c.JSON(http.StatusCreated, user)
 }
 
-func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Login(c *gin.Context) {
 	var input struct {
 		Email    string
 		Password string
 	}
 
-	json.NewDecoder(r.Body).Decode(&input)
+	c.ShouldBindJSON(&input)
 
 	user, err := h.service.Login(input.Email, input.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
 	token, err := auth.GenerateToken(user.ID, string(user.Role))
 
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	clamis := r.Context().Value(auth.UserContextKey).(jwt.MapClaims)
+func (h *Handler) Me(c *gin.Context) {
+	claimsValue, ok := c.Get("user")
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-	userID := clamis["user_id"].(string)
-	role := clamis["role"].(string)
+	claims, ok := claimsValue.(jwt.MapClaims)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-	json.NewEncoder(w).Encode(map[string]string{
+	userID := claims["user_id"].(string)
+	role := claims["role"].(string)
+
+	c.JSON(http.StatusOK, gin.H{
 		"user_id": userID,
 		"role":    role,
 	})
