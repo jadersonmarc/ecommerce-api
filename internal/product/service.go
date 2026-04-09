@@ -54,3 +54,7 @@ func (s *Service) Create(name, description string, price int64, stock int) (*Pro
 func (s *Service) List() ([]*Product, error) {
 	return s.repo.FindAll()
 }
+
+func (s *Service) GetByID(id string) (*Product, error) {
+	return s.repo.FindByID(id)
+}
