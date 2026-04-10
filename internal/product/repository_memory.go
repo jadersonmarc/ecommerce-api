@@ -1,9 +1,13 @@
 package product
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
 type MemoryRepository struct {
 	products map[string]*Product
+	mu       sync.Mutex
 }
 
 func NewMemoryRepository() *MemoryRepository {
@@ -29,4 +33,21 @@ func (r *MemoryRepository) FindByID(id string) (*Product, error) {
 		return nil, errors.New("product not found")
 	}
 	return p, nil
+}
+
+func (r *MemoryRepository) DecreaseStock(productID string, quantity int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	product, ok := r.products[productID]
+	if !ok {
+		return errors.New("product not found")
+	}
+
+	if product.Stock < quantity {
+		return errors.New("insufficient stock")
+	}
+
+	product.Stock -= quantity
+	return nil
 }

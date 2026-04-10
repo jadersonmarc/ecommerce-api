@@ -5,30 +5,38 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
 	"github.com/jadersonmarc/ecommerce-api/internal/cart"
 	"github.com/jadersonmarc/ecommerce-api/internal/product"
 )
 
+type PaymentService interface {
+	CreatePaymentIntent(amount int64, orderID string) (string, error)
+}
 type Service struct {
 	repo           Repository
 	cartService    *cart.Service
 	productService *product.Service
+	paymentService PaymentService
+}
+type CheckoutResponse struct {
+	Order        *Order
+	ClientSecret string
 }
 
 func GenerateID() string {
 	return uuid.New().String()
 }
 
-func NewService(r Repository, cs *cart.Service, ps *product.Service) *Service {
+func NewService(r Repository, cs *cart.Service, ps *product.Service, pay PaymentService) *Service {
 	return &Service{
 		repo:           r,
 		cartService:    cs,
 		productService: ps,
+		paymentService: pay,
 	}
 }
 
-func (s *Service) Checkout(userID string) (*Order, error) {
+func (s *Service) Checkout(userID string) (*CheckoutResponse, error) {
 	cart, err := s.cartService.GetCart(userID)
 	if err != nil {
 		return nil, err
@@ -75,7 +83,16 @@ func (s *Service) Checkout(userID string) (*Order, error) {
 		return nil, err
 	}
 
-	return order, nil
+	ClientSecret, err := s.paymentService.CreatePaymentIntent(total, order.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CheckoutResponse{
+		Order:        order,
+		ClientSecret: ClientSecret,
+	}, nil
+
 }
 
 func (s *Service) Pay(orderID string) error {
@@ -91,12 +108,12 @@ func (s *Service) Pay(orderID string) error {
 	order.Status = StatusPaid
 
 	for _, item := range order.Items {
-		product, err := s.productService.GetByID(item.ProductID)
+		err := s.productService.DecreaseStock(item.ProductID, item.Quantity)
 		if err != nil {
 			return err
 		}
-		product.Stock -= item.Quantity
 	}
+
 	err = s.cartService.ClearCart(order.UserID)
 	if err != nil {
 		return err

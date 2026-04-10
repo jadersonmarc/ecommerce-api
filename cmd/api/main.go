@@ -1,16 +1,23 @@
 package main
 
 import (
+	"os"
+
 	"github.com/gin-gonic/gin"
+	"github.com/stripe/stripe-go/v85"
 
 	"github.com/jadersonmarc/ecommerce-api/internal/auth"
 	"github.com/jadersonmarc/ecommerce-api/internal/cart"
 	"github.com/jadersonmarc/ecommerce-api/internal/order"
+	"github.com/jadersonmarc/ecommerce-api/internal/payment"
 	"github.com/jadersonmarc/ecommerce-api/internal/product"
 	"github.com/jadersonmarc/ecommerce-api/internal/user"
 )
 
 func main() {
+
+	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
+
 	repo := user.NewMemoryRepository()
 	service := user.NewService(repo)
 	handler := user.NewHandler(service)
@@ -24,8 +31,10 @@ func main() {
 	cartHandler := cart.NewHandler(cartService)
 
 	orderRepo := order.NewMemoryRepository()
-	orderService := order.NewService(orderRepo, cartService, productService)
+	paymentService := payment.NewService()
+	orderService := order.NewService(orderRepo, cartService, productService, paymentService)
 	orderHandler := order.NewHandler(orderService)
+	paymentHandler := payment.NewHandler(orderService)
 
 	r := gin.Default()
 
@@ -33,6 +42,8 @@ func main() {
 	r.POST("/login", handler.Login)
 
 	r.GET("/products", productHandler.List)
+
+	r.POST("/webhook", paymentHandler.Webhook)
 
 	authGroup := r.Group("/")
 	authGroup.Use(auth.GinAuthMiddleware())

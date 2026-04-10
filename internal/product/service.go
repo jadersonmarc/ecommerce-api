@@ -58,3 +58,16 @@ func (s *Service) List() ([]*Product, error) {
 func (s *Service) GetByID(id string) (*Product, error) {
 	return s.repo.FindByID(id)
 }
+
+func (s *Service) DecreaseStock(id string, quantity int) error {
+	product, err := s.repo.FindByID(id)
+	if err != nil {
+		return err
+	}
+
+	if product.Stock < 1 {
+		return nil
+	}
+
+	return s.repo.DecreaseStock(id, quantity)
+}
