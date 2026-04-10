@@ -137,3 +137,17 @@ func (s *Service) UpdateItem(userID, productId string, quantity int) (*Cart, err
 
 	return nil, errors.New("item not found in cart")
 }
+
+func (s *Service) ClearCart(userID string) error {
+	cart, err := s.repo.GetByUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	if cart == nil {
+		return nil
+	}
+
+	cart.Items = []CartItem{}
+	return s.repo.Save(cart)
+}

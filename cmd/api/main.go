@@ -5,6 +5,7 @@ import (
 
 	"github.com/jadersonmarc/ecommerce-api/internal/auth"
 	"github.com/jadersonmarc/ecommerce-api/internal/cart"
+	"github.com/jadersonmarc/ecommerce-api/internal/order"
 	"github.com/jadersonmarc/ecommerce-api/internal/product"
 	"github.com/jadersonmarc/ecommerce-api/internal/user"
 )
@@ -21,6 +22,10 @@ func main() {
 	cartRepo := cart.NewMemoryRepository()
 	cartService := cart.NewService(cartRepo, productService)
 	cartHandler := cart.NewHandler(cartService)
+
+	orderRepo := order.NewMemoryRepository()
+	orderService := order.NewService(orderRepo, cartService, productService)
+	orderHandler := order.NewHandler(orderService)
 
 	r := gin.Default()
 
@@ -39,6 +44,9 @@ func main() {
 	authGroup.GET("/cart", cartHandler.GetCart)
 
 	authGroup.GET("/me", handler.Me)
+
+	authGroup.POST("/checkout", orderHandler.Checkout)
+	authGroup.POST("/orders/:order_id/pay", orderHandler.Pay)
 
 	adminGroup := r.Group("/")
 	adminGroup.Use(auth.GinAdminMiddleware)
