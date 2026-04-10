@@ -1,5 +1,7 @@
 # Ecommerce API
 
+solution of https://roadmap.sh/projects/ecommerce-api
+
 API REST de e-commerce escrita em Go com `gin`, autenticação por JWT e armazenamento em memória para fins de estudo e evolução incremental.
 
 ## Visão geral
