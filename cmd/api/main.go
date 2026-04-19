@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/jadersonmarc/ecommerce-api/internal/auth"
 	"github.com/jadersonmarc/ecommerce-api/internal/cart"
+	"github.com/jadersonmarc/ecommerce-api/internal/database"
 	"github.com/jadersonmarc/ecommerce-api/internal/order"
 	"github.com/jadersonmarc/ecommerce-api/internal/payment"
 	"github.com/jadersonmarc/ecommerce-api/internal/product"
@@ -18,19 +21,29 @@ func main() {
 
 	stripe.Key = os.Getenv("STRIPE_SECRET_KEY")
 
-	repo := user.NewMemoryRepository()
-	service := user.NewService(repo)
+	db, err := database.Open(context.Background(), database.LoadConfig())
+	if err != nil {
+		log.Fatalf("failed to connect to postgres: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("failed to access sql db from gorm: %v", err)
+	}
+	defer sqlDB.Close()
+
+	userRepo := user.NewPostgresRepository(db)
+	service := user.NewService(userRepo)
 	handler := user.NewHandler(service)
 
-	productRepo := product.NewMemoryRepository()
+	productRepo := product.NewPostgresRepository(db)
 	productService := product.NewService(productRepo)
 	productHandler := product.NewHandler(productService)
 
-	cartRepo := cart.NewMemoryRepository()
+	cartRepo := cart.NewPostgresRepository(db)
 	cartService := cart.NewService(cartRepo, productService)
 	cartHandler := cart.NewHandler(cartService)
 
-	orderRepo := order.NewMemoryRepository()
+	orderRepo := order.NewPostgresRepository(db)
 	paymentService := payment.NewService()
 	orderService := order.NewService(orderRepo, cartService, productService, paymentService)
 	orderHandler := order.NewHandler(orderService)

@@ -2,12 +2,13 @@
 
 solution of https://roadmap.sh/projects/ecommerce-api
 
-API REST de e-commerce escrita em Go com `gin`, autenticação por JWT e armazenamento em memória para fins de estudo e evolução incremental.
+API REST de e-commerce escrita em Go com `gin`, autenticação por JWT, PostgreSQL e GORM.
 
 ## Visão geral
 
 O projeto está organizado por domínio em `internal/`:
 
+- `database`: conexão com PostgreSQL, criação do banco e bootstrap do schema com GORM.
 - `user`: cadastro, login e leitura do usuário autenticado.
 - `product`: criação e listagem de produtos.
 - `cart`: gerenciamento de carrinho do usuário autenticado.
@@ -15,27 +16,50 @@ O projeto está organizado por domínio em `internal/`:
 - `payment`: integração com Stripe para criar `PaymentIntent` e receber webhook.
 - `auth`: geração de token JWT e middlewares de autenticação/autorização.
 
-Hoje a aplicação usa repositórios em memória, então os dados são perdidos ao reiniciar a API.
+Ao subir a aplicação, o banco configurado é criado automaticamente se ainda não existir, junto com as tabelas necessárias.
 
 ## Stack
 
 - Go `1.26.1`
 - Gin
 - JWT (`github.com/golang-jwt/jwt/v5`)
+- PostgreSQL
+- GORM (`gorm.io/gorm`)
+- Driver PostgreSQL do GORM (`gorm.io/driver/postgres`)
 - Stripe (`github.com/stripe/stripe-go/v85`)
 - UUID (`github.com/google/uuid`)
 - Bcrypt (`golang.org/x/crypto/bcrypt`)
 
 ## Como rodar
 
-1. Configure a variável `STRIPE_SECRET_KEY` no `.env` ou no shell.
-2. Inicie a API:
+1. Garanta que o PostgreSQL esteja rodando.
+2. Configure as variáveis de ambiente no shell ou `.env`:
+
+```bash
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export POSTGRES_USER=postgres
+export POSTGRES_PASSWORD=123mudar
+export POSTGRES_DB=ecommerce
+export POSTGRES_SSLMODE=disable
+export STRIPE_SECRET_KEY=sk_test_xxx
+```
+
+3. Inicie a API:
 
 ```bash
 go run ./cmd/api
 ```
 
 A aplicação sobe em `http://localhost:8080`.
+
+Se o banco `ecommerce` ainda não existir, a API tentará criá-lo automaticamente usando a conexão administrativa no banco `postgres`. Depois disso, o GORM executa `AutoMigrate` para garantir o schema básico.
+
+Se quiser subir o PostgreSQL via Docker:
+
+```bash
+docker compose up -d postgres
+```
 
 ## Como testar
 
@@ -88,8 +112,7 @@ Requer token de usuário com `role=admin`.
 
 ## Limitações atuais
 
-- Persistência apenas em memória.
 - `secret` JWT fixo no código.
 - Segredo do webhook Stripe ainda está hardcoded.
-- Sem migrations, banco de dados ou observabilidade.
+- Bootstrap de schema feito com `AutoMigrate`; ainda não há versionamento formal de migrations.
 - Alguns fluxos ainda dependem de melhorias de validação e tratamento de erro.

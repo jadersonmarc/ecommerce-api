@@ -65,8 +65,8 @@ func (s *Service) DecreaseStock(id string, quantity int) error {
 		return err
 	}
 
-	if product.Stock < 1 {
-		return nil
+	if product.Stock < quantity {
+		return errors.New("insufficient stock")
 	}
 
 	return s.repo.DecreaseStock(id, quantity)

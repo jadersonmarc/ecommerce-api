@@ -105,13 +105,15 @@ func (s *Service) Pay(orderID string) error {
 		return errors.New("order already paid")
 	}
 
-	order.Status = StatusPaid
-
 	for _, item := range order.Items {
 		err := s.productService.DecreaseStock(item.ProductID, item.Quantity)
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := s.repo.UpdateStatus(orderID, StatusPaid); err != nil {
+		return err
 	}
 
 	err = s.cartService.ClearCart(order.UserID)

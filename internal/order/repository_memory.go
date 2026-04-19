@@ -24,3 +24,13 @@ func (r *MemoryRepository) FindByID(id string) (*Order, error) {
 	}
 	return order, nil
 }
+
+func (r *MemoryRepository) UpdateStatus(id, status string) error {
+	order, exists := r.orders[id]
+	if !exists {
+		return errors.New("order not found")
+	}
+
+	order.Status = status
+	return nil
+}
